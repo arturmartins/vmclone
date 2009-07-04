@@ -1,0 +1,232 @@
+#!/bin/sh
+ # --------------------------------------------------------------------
+ #
+ # vmclone - a bash script for cloning vmware v2.x virtual machines
+ #
+ # --------------------------------------------------------------------
+ # author: (c) Artur Martins, arturmartins@gmail.com 
+ # version: 1.0  - 02-Jul-2009 - All rights reserved.
+ # --------------------------------------------------------------------
+ #
+ # DESCRIPTION:
+ #
+ # vmclone is a bash script that was written to create a complete 
+ # duplicate of a Virtual Machine for VMWare Server version 2.x.
+ # --------------------------------------------------------------------
+ #
+ # WARRANTY:
+ #
+ # NO WARRANTY IS IMPLIED OR GIVEN - use at your own risk.
+ # If you screw it up, it is not my fault. Use of this tool constitutes
+ # your acceptance of these terms. Advice: keep a backup first!
+ # --------------------------------------------------------------------
+ # 
+ # LICENSE:
+ #
+ # This software is Donationware - if you feel you have benefited from
+ # the use of this tool then please consider a donation. The value of
+ # which is entirely left up to your discretion. I accept PayPal :) 
+ # --------------------------------------------------------------------
+ #
+ # INSTALLATION:
+ #
+ # Installation: Copy this file to /usr/local/bin/vmclone, make it
+ # executable. An example could be:
+ #   cp vmclone /usr/local/bin/
+ #   chown root.root /usr/local/bin/vmclone 
+ #   chmod 555 /usr/local/bin/vmclone
+ #
+ # If you can want a more secure enviroment for this tool, give access
+ # only to the root user:
+ #   chown root.root /usr/local/bin/vmclone
+ #   chmod 500 /usr/local/bin/vmclone
+ #
+ # If you need to change or customize this script, you should give
+ # write permission to the file first:
+ #   chmod u+w /usr/local/bin/vmclone
+ # --------------------------------------------------------------------
+ #
+ # RUN:
+ #
+ # Run the command: vmclone "source dir" "clone dir".
+ # Type "vmclone" on its own for usage guidelines.
+ # --------------------------------------------------------------------
+ #
+ # FINAL THOUGHTS:
+ #
+ # Please send any feedback, opinion , suggestion about this tool to 
+ # my email.
+ #
+ # I hope that you have fun with it!
+ #
+ # Thank you,
+ # Artur Martins
+ # --------------------------------------------------------------------
+
+
+
+#
+# Configuration
+#
+VMWARE_CFG='/etc/vmware/config'
+VMWARE_KEY='vmdir'
+
+#
+# error_msg function
+#
+function error_msg
+{
+  	echo "-------------------------------------------------------"
+	echo -e '\E[31m'"\033[1m ERROR: " $1 "\033[0m"
+  	echo "-------------------------------------------------------"
+}
+
+#
+# usage function
+#
+function usage
+{
+	echo "Usage: "
+	echo "      "$0"  <source_vm_name> <clone_vm_name>" 
+	echo ""
+	echo " source_vm_name - source virtual machine name. It must "
+	echo "                  exist and it should be a vmware vm directory" 
+	echo " clone_vm_name  - clone virtual machine name. It should not exist"
+	echo ""
+	echo ""
+}
+
+
+# check amount of arguments
+if [ $# -lt 2 ]; then
+	error_msg "USAGE ERROR"
+   	usage
+   	exit 1
+fi
+
+#
+# check if the VMWare config file exists to 
+# determine where is the VMWare Virtual Machines
+# root directory
+# 
+if [ -f $VMWARE_CFG ]; then
+	VM_ROOT_DIR=`grep $VMWARE_KEY $VMWARE_CFG | awk '{ print $3 }' | cut -f2 -d\"`
+        echo -e '\E[37m'"\033[1m -- Configuration: --\033[0m"
+  	echo "Using $VMWARE_CFG"
+  	echo "VMWare Root directory located at $VM_ROOT_DIR."
+  	echo ""
+else
+  	error_msg "Could not determine VMWare root directory. "
+  	exit 1
+fi
+
+# define variables
+SOURCE=$1
+CLONE=$2
+
+SOURCE_DIR=$VM_ROOT_DIR'/'$SOURCE
+CLONE_DIR=$VM_ROOT_DIR'/'$CLONE
+
+
+#check if root and clone are not the same
+if [ $SOURCE == $CLONE ]; then
+   	error_msg "Clone dir has to be DIFERENT from the source dir."
+   	usage
+   	exit 1
+fi
+
+#check if SOURCE_DIR exists
+if [ -d $SOURCE_DIR ]; then
+	# check if there is an vmware vmdk file
+    	if [ -f $SOURCE_DIR'/'$SOURCE'.vmx' ] && [ -f $SOURCE_DIR'/'$SOURCE'.vmdk' ]; then
+       		echo "source directory: "$SOURCE_DIR
+
+    	else 
+        	error_msg "Source directory DOES NOT HAVE a vmware virtual machine."
+		exit 1
+    	fi
+else
+    	error_msg "Source directory DOES NOT exists."
+    	exit 1
+fi
+
+#check if CLONE_DIR exists
+if [ -d $CLONE_DIR ]; then
+   	error_msg "Clone directory ALREADY exists."
+else
+    	echo "clone directory: "$CLONE_DIR
+fi
+
+#
+# step 1 - copy files  
+#
+echo -e '\E[37m'"\033[1m Step 1:\033[0m"
+echo " --- Copying files :"
+time cp -axv $SOURCE_DIR $CLONE_DIR
+echo " --- finished."
+echo ""
+
+#
+# step 2 - copy files  
+#
+echo -e '\E[37m'"\033[1m Step 2:\033[0m"
+echo " --- Renaming files:"
+
+actual_dir=`pwd`
+
+cd $CLONE_DIR
+ls -1 | grep $SOURCE | while read VMFILE;
+do
+  NEWFILE=`echo $VMFILE | sed -e s/$SOURCE/$CLONE/`
+  echo $VMFILE " >> " $NEWFILE
+  mv $VMFILE $NEWFILE
+done
+echo " --- finished."
+echo ""
+
+#
+# step 3 - fix the vmx and vmdk files with the new clone name
+#
+echo -e '\E[37m'"\033[1m Step 3:\033[0m"
+echo " --- Fixing name on vmx and vmdk files:"
+cp $CLONE.vmx $CLONE.vmx.bak
+cp $CLONE.vmdk $CLONE.vmdk.bak
+sed -e s/$SOURCE/$CLONE/g $CLONE.vmx > cloned.vmx
+sed -e s/$SOURCE/$CLONE/g $CLONE.vmdk > cloned.vmdk
+cp -f cloned.vmx $CLONE.vmx
+cp -f cloned.vmdk $CLONE.vmdk
+rm cloned.vmx
+rm cloned.vmdk 
+echo " --- finished."
+echo ""
+
+#
+# step 4 - cleaning log files
+# 
+echo -e '\E[37m'"\033[1m Step 4:\033[0m"
+echo " --- Cleaning logs"
+rm $CLONE_DIR/vmware.log
+echo " --- finished."
+echo ""
+
+#
+# step 5 - delete lock files if any
+# 
+echo -e '\E[37m'"\033[1m Step 5:\033[0m"
+echo " --- Deleting locks files, if any"
+if rm $CLONE_DIR/*.lck/*.lck -f; then
+  	echo " --- lock files deleted!"
+else
+	echo " --- no lock files where deleted."
+fi
+
+
+# listing files
+/bin/ls -al
+
+#go to the previous directory
+cd $actual_dir
+
+echo -e '\E[32m'"\033[1m Operation terminated successfully.\033[0m"
+
+
