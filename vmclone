@@ -190,13 +190,13 @@ echo ""
 echo -e '\E[37m'"\033[1m Step 3:\033[0m"
 echo " --- Fixing name on vmx and vmdk files:"
 cp $CLONE.vmx $CLONE.vmx.bak
-cp $CLONE.vmdk $CLONE.vmdk.bak
+cp $CLONE.vmxf $CLONE.vmxf.bak
 sed -e s/$SOURCE/$CLONE/g $CLONE.vmx > cloned.vmx
-sed -e s/$SOURCE/$CLONE/g $CLONE.vmdk > cloned.vmdk
+sed -e s/$SOURCE/$CLONE/g $CLONE.vmxf > cloned.vmxf
 cp -f cloned.vmx $CLONE.vmx
-cp -f cloned.vmdk $CLONE.vmdk
+cp -f cloned.vmxf $CLONE.vmxf
 rm cloned.vmx
-rm cloned.vmdk 
+rm cloned.vmxf
 echo " --- finished."
 echo ""
 
@@ -205,7 +205,7 @@ echo ""
 # 
 echo -e '\E[37m'"\033[1m Step 4:\033[0m"
 echo " --- Cleaning logs"
-rm $CLONE_DIR/vmware.log
+rm -v $CLONE_DIR/vmware*.log
 echo " --- finished."
 echo ""
 
@@ -214,19 +214,16 @@ echo ""
 # 
 echo -e '\E[37m'"\033[1m Step 5:\033[0m"
 echo " --- Deleting locks files, if any"
-if rm $CLONE_DIR/*.lck/*.lck -f; then
-  	echo " --- lock files deleted!"
-else
-	echo " --- no lock files where deleted."
-fi
-
-
-# listing files
-/bin/ls -al
-
-#go to the previous directory
-cd $actual_dir
-
+rm -v $CLONE_DIR/*.lck/*.lck -f
+echo " --- done!"
+echo ""
 echo -e '\E[32m'"\033[1m Operation terminated successfully.\033[0m"
 
 
+# listing files
+echo ""
+echo -e '\E[37m'"\033[1m Listing $CLONE:\033[0m"
+/bin/ls -l
+
+#go to the previous directory
+cd $actual_dir
