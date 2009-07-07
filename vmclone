@@ -137,8 +137,8 @@ fi
 
 #check if SOURCE_DIR exists
 if [ -d $SOURCE_DIR ]; then
-	# check if there is an vmware vmdk file
-    	if [ -f $SOURCE_DIR'/'$SOURCE'.vmx' ] && [ -f $SOURCE_DIR'/'$SOURCE'.vmdk' ]; then
+	# check if there is an vmware vmxf file
+    	if [ -f $SOURCE_DIR'/'$SOURCE'.vmx' ] && [ -f $SOURCE_DIR'/'$SOURCE'.vmxf' ]; then
        		echo "source directory: "$SOURCE_DIR
 
     	else 
@@ -185,10 +185,10 @@ echo " --- finished."
 echo ""
 
 #
-# step 3 - fix the vmx and vmdk files with the new clone name
+# step 3 - fix the vmx and vmxf files with the new clone name
 #
 echo -e '\E[37m'"\033[1m Step 3:\033[0m"
-echo " --- Fixing name on vmx and vmdk files:"
+echo " --- Fixing name on vmx and vmxf files:"
 cp $CLONE.vmx $CLONE.vmx.bak
 cp $CLONE.vmxf $CLONE.vmxf.bak
 sed -e s/$SOURCE/$CLONE/g $CLONE.vmx > cloned.vmx
